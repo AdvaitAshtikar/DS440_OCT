@@ -1,0 +1,17 @@
+# Use the official PyTorch image as a base
+FROM pytorch/pytorch:latest
+
+# Set working directory
+WORKDIR /app
+
+# Copy all files to the container
+COPY . .
+
+# Install dependencies
+RUN pip install flask flask-cors torch torchvision efficientnet_pytorch
+
+# Expose the port Flask is running on
+EXPOSE 5000
+
+# Run the app
+CMD ["python", "app.py"]
