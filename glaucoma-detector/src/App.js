@@ -42,7 +42,7 @@ function App() {
       <header className="App-header">
         <h1>Glaucoma OCT Model</h1>
         <p>
-          This application uses machine learning models to predict the probability of glaucoma based on input images.
+          This application uses machine learning models to detect the presence of glaucoma based on input images.
         </p>
         
         <form onSubmit={handleSubmit}>
