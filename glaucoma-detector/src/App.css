@@ -1,28 +1,61 @@
 .App {
   text-align: center;
+  background-color: #f4f4f4;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
 }
 
 .App-header {
   background-color: #282c34;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
+  padding: 20px;
   color: white;
+  border-radius: 10px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+  width: 80%;
+  max-width: 600px;
+}
+
+.App h1 {
+  font-size: 2.5rem;
+  margin-bottom: 20px;
+}
+
+.App p {
+  font-size: 1.2rem;
+  margin-bottom: 20px;
+}
+
+.App-file-input {
+  margin: 20px 0;
+  padding: 10px;
+  border: 2px dashed #61dafb;
+  border-radius: 5px;
+  background-color: #fff;
+  cursor: pointer;
+}
+
+.App-file-input:hover {
+  background-color: #e0f7fa;
 }
 
 .App-button {
   background-color: #61dafb;
-  border: none;
+  color: #282c34;
   padding: 10px 20px;
-  font-size: 16px;
-  cursor: pointer;
+  border: none;
   border-radius: 5px;
+  font-size: 1.2rem;
+  cursor: pointer;
   transition: background-color 0.3s;
 }
 
 .App-button:hover {
   background-color: #21a1f1;
+}
+
+.App-button:active {
+  background-color: #1e90ff;
 }
