@@ -12,20 +12,30 @@ class TestDataset(Dataset):
     def __init__(self, image_dir, output_size=(256, 256)):
         self.output_size = output_size
         self.image_dir = image_dir
-        self.image_filenames = [path for path in os.listdir(image_dir) if not path.startswith('.')]
+        self.valid_extensions = ('.jpg', '.jpeg', '.png', '.bmp', '.tiff')
+        self.image_filenames = [
+            path for path in os.listdir(image_dir)
+            if not path.startswith('.') and path.lower().endswith(self.valid_extensions)
+        ]
 
     def __len__(self):
         return len(self.image_filenames)
 
     def __getitem__(self, idx):
+        img_name = os.path.join(self.image_dir, self.image_filenames[idx])
         try:
-            img_name = os.path.join(self.image_dir, self.image_filenames[idx])
-            img = np.array(Image.open(img_name).convert('RGB'))
+            # Open and fully load the image to check for corruption
+            with Image.open(img_name) as img:
+                img = img.convert('RGB')
+                img = np.array(img)
+
             img = transforms.functional.to_tensor(img)
             img = transforms.functional.resize(img, self.output_size, interpolation=Image.BILINEAR)
             return img
         except Exception as e:
+            print(f"Error processing file {self.image_filenames[idx]}: {e}")
             return None
+
 
 class UNet(nn.Module):
     def __init__(self, n_channels=3, n_classes=2):

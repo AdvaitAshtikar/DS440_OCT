@@ -59,81 +59,118 @@ function App() {
       return;
     }
 
-    setSelectedFiles(files);
-    setResults('');
-    setProgress(0);
-    setLoading(false);
-    setUploadSuccess(false);
-    setSnackbarMessage('Files selected successfully.');
-    setSnackbarOpen(true);
+    // Check for invalid file types (only images allowed)
+    const invalidFiles = files.filter(
+      (file) => !file.name.match(/\.(jpg|jpeg|png|bmp|tiff)$/i)
+    );
+
+    if (invalidFiles.length > 0) {
+      setSnackbarMessage('Invalid file type selected. Please upload images (jpg, jpeg, png, bmp, tiff).');
+      setSnackbarOpen(true);
+      return; // Reject the invalid files and don't proceed further
+    }
+
+    // Check if any file is corrupt
+    const corruptFiles = [];
+    const validFiles = [];
+
+    files.forEach((file) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          validFiles.push(file); // File is valid and can be added
+          if (validFiles.length === files.length) {
+            setSelectedFiles(validFiles); // Set valid files for upload
+            setResults('');
+            setProgress(0);
+            setLoading(false);
+            setUploadSuccess(false);
+            setSnackbarMessage('Files selected successfully.');
+            setSnackbarOpen(true);
+          }
+        };
+        img.onerror = () => {
+          corruptFiles.push(file); // File is corrupt
+          if (corruptFiles.length > 0) {
+            setSnackbarMessage(`The following files are corrupt: ${corruptFiles.map(f => f.name).join(', ')}`);
+            setSnackbarOpen(true);
+          }
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
   };
 
+
+
   // Handle classification submission
-const handleSubmit = async (event) => {
-  event.preventDefault();
+  const handleSubmit = async (event) => {
+    event.preventDefault();
 
-  if (selectedFiles.length > 0) {
-    setLoading(true);
-    setProgress(0);
+    if (selectedFiles.length > 0) {
+      setLoading(true);
+      setProgress(0);
 
-    const formData = new FormData();
-    selectedFiles.forEach((file) => {
-      formData.append('images', file);
-    });
+      const formData = new FormData();
+      selectedFiles.forEach((file) => {
+        formData.append('images', file);
+      });
 
-    try {
-      const xhr = new XMLHttpRequest();
-      xhr.open('POST', backendURL);
+      try {
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', backendURL);
 
-      // Update progress
-      xhr.upload.onprogress = (event) => {
-        if (event.lengthComputable) {
-          const percentCompleted = Math.round((event.loaded / event.total) * 100);
-          setProgress(percentCompleted);
-        }
-      };
+        // Update progress
+        xhr.upload.onprogress = (event) => {
+          if (event.lengthComputable) {
+            const percentCompleted = Math.round((event.loaded / event.total) * 100);
+            setProgress(percentCompleted);
+          }
+        };
 
-      xhr.onload = async () => {
-        if (xhr.status === 200) {
-          const data = JSON.parse(xhr.responseText);
-          const formattedResults = data.results
-            .map(
-              (result) =>
-                `File: ${result.file}\n  vCDR: ${result.vCDR}\n  Prediction: ${result.prediction}\n`
-            )
-            .join('\n');
-          setResults(formattedResults);
-          setUploadSuccess(true);
-          setSnackbarMessage('Classification completed successfully!');
-          setOldResults((prev) => [
-            ...prev,
-            { timestamp: new Date(), results: formattedResults },
-          ]);
-        } else {
-          const errorData = JSON.parse(xhr.responseText);
-          setSnackbarMessage('Error: ' + errorData.error);
-        }
+        xhr.onload = async () => {
+          if (xhr.status === 200) {
+            const data = JSON.parse(xhr.responseText);
+            const formattedResults = data.results
+              .map(
+                (result) =>
+                  `File: ${result.file}\n  vCDR: ${result.vCDR}\n  Prediction: ${result.prediction}\n`
+              )
+              .join('\n');
+            setResults(formattedResults);
+            setUploadSuccess(true);
+            setSnackbarMessage('Classification completed successfully!');
+            setOldResults((prev) => [
+              ...prev,
+              { timestamp: new Date(), results: formattedResults },
+            ]);
+          } else {
+            const errorData = JSON.parse(xhr.responseText);
+            setSnackbarMessage('Error: ' + errorData.error);
+          }
+          setSnackbarOpen(true);
+          setLoading(false);
+        };
+
+        xhr.onerror = () => {
+          setSnackbarMessage('Upload failed. Please try again.');
+          setSnackbarOpen(true);
+          setLoading(false);
+        };
+
+        xhr.send(formData);
+      } catch (error) {
+        setSnackbarMessage('Error: ' + error.message);
         setSnackbarOpen(true);
         setLoading(false);
-      };
-
-      xhr.onerror = () => {
-        setSnackbarMessage('Upload failed. Please try again.');
-        setSnackbarOpen(true);
-        setLoading(false);
-      };
-
-      xhr.send(formData);
-    } catch (error) {
-      setSnackbarMessage('Error: ' + error.message);
+      }
+    } else {
+      setSnackbarMessage('Please select files to upload.');
       setSnackbarOpen(true);
-      setLoading(false);
     }
-  } else {
-    setSnackbarMessage('Please select files to upload.');
-    setSnackbarOpen(true);
-  }
-};
+  };
 
 
   const toggleDarkMode = () => {
