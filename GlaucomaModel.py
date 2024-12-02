@@ -3,25 +3,16 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import torch.optim as optim
 import torchvision.transforms as transforms
-
 from PIL import Image
 from torch.utils.data import Dataset
 from scipy.ndimage import label
-from tensorflow import keras
-from keras._tf_keras.keras.preprocessing.image import array_to_img
 
 class TestDataset(Dataset):
     def __init__(self, image_dir, output_size=(256, 256)):
         self.output_size = output_size
         self.image_dir = image_dir
-
-        # Load images
-        self.image_filenames = []
-        for path in os.listdir(image_dir):
-            if not path.startswith('.'):
-                self.image_filenames.append(path)
+        self.image_filenames = [path for path in os.listdir(image_dir) if not path.startswith('.')]
 
     def __len__(self):
         return len(self.image_filenames)
@@ -32,12 +23,10 @@ class TestDataset(Dataset):
             img = np.array(Image.open(img_name).convert('RGB'))
             img = transforms.functional.to_tensor(img)
             img = transforms.functional.resize(img, self.output_size, interpolation=Image.BILINEAR)
-
             return img
         except Exception as e:
-            print(f"\nError loading file {self.image_filenames[idx]}: {e}")
-            return None  # Optionally skip or handle differently
-        
+            return None
+
 class UNet(nn.Module):
     def __init__(self, n_channels=3, n_classes=2):
         super(UNet, self).__init__()
@@ -120,7 +109,7 @@ class OutConv(nn.Module):
 
     def forward(self, x):
         return self.conv(x)
-    
+
 EPS = 1e-7
 
 def compute_dice_coef(input, target):
@@ -160,50 +149,24 @@ def refine_seg(pred):
     return torch.stack(largest_ccs)
 
 def predict_and_evaluate(model, test_loader, test_set, device, vCDR_threshold=0.6):
-    # Prepare to store predictions and ground truth labels
     results = []
 
     with torch.no_grad():
         for img, filename in zip(test_loader, test_set.image_filenames):
             img = img.to(device)
-
-            # Forward pass through the model
             logits = model(img)
-
-            # Check if logits are producing reasonable values
-            print(f"Logits for {filename}: {logits}")
-
-            # Get segmentation predictions for OD and OC
             pred_od = (logits[:, 0, :, :] >= 0.5).type(torch.int8).cpu()
             pred_oc = (logits[:, 1, :, :] >= 0.5).type(torch.int8).cpu()
-
-            # Check segmented outputs
-            print(f"Pred OD for {filename}: {pred_od}")
-            print(f"Pred OC for {filename}: {pred_oc}")
-
-            # Refine segmentations
             pred_od_refined = refine_seg(pred_od).to(device)
             pred_oc_refined = refine_seg(pred_oc).to(device)
-
-            # Check refined outputs
-            print(f"Pred OD Refined for {filename}: {pred_od_refined}")
-            print(f"Pred OC Refined for {filename}: {pred_oc_refined}")
-
-            # Compute predicted vCDR
             try:
                 pred_vCDR = vertical_cup_to_disc_ratio(pred_od_refined.cpu().numpy(), pred_oc_refined.cpu().numpy())[0]
-                print(f"Pred vCDR for {filename}: {pred_vCDR}")
             except Exception as e:
-                print(f"Error computing vCDR for {filename}: {e}")
-                pred_vCDR = None  # If vCDR calculation fails, set it to None
-
-            # Classify based on vCDR threshold
+                pred_vCDR = None
             if pred_vCDR is not None:
                 predicted_label = "Glaucoma" if pred_vCDR > vCDR_threshold else "No Glaucoma"
             else:
                 predicted_label = "Error"
-
-            # Store results
             results.append({
                 "filename": filename,
                 "vCDR": f"{pred_vCDR:.2f}" if pred_vCDR is not None else "undefined",
@@ -211,4 +174,3 @@ def predict_and_evaluate(model, test_loader, test_set, device, vCDR_threshold=0.
             })
 
     return results
-

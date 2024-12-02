@@ -32,7 +32,7 @@ def process_image(image_bytes):
     try:
         img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
         img = transform(img)
-        img = img.unsqueeze(0).to(device)  # Add batch dimension and move to device
+        img = img.unsqueeze(0).to(device)
         return img
     except Exception as e:
         print(f"Error processing image: {e}")
